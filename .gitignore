@@ -6,4 +6,4 @@ venv/
 .venv/
 .DS_Store
 Thumbs.db
-outputs/figures/
+outputs/figures/r
