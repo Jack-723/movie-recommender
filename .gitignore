@@ -1,3 +1,4 @@
+Datasets/
 data/raw/
 __pycache__/
 *.py[cod]
@@ -6,4 +7,6 @@ venv/
 .venv/
 .DS_Store
 Thumbs.db
-outputs/figures/r
+.planning
+context.md
+prompt.md

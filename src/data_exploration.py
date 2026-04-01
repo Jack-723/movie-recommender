@@ -4,7 +4,7 @@ missing values, duplicates, and does basic exploratory analysis
 
 import sys
 import os
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Load data from utils module
 from utils import load_all
