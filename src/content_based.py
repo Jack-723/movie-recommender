@@ -95,7 +95,7 @@ def save_outputs(recs_df, out_dir='outputs'):
 if __name__ == "__main__":
     from nonpersonalized import time_based_split, evaluate_recommender
 
-    ratings, movies, users = __import__('utils').load_all()
+    ratings, movies, users = load_all()
 
     print("Preprocessing movie text...")
     corpus = build_corpus(movies)
