@@ -9,9 +9,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 from utils import load_movies, load_all
 
-# load model once at module level — downloads ~90MB on first run, then cached
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
 
 def build_bert_corpus(movies_df):
     # strip year from title, replace genre separator — no lemmatization needed
@@ -26,8 +23,9 @@ def build_bert_corpus(movies_df):
 
 
 def compute_bert_embeddings(corpus):
-    # encode all movie texts into dense 384-dim vectors
-    print("Encoding movies with BERT (this may take a minute)...")
+    # load model here so it's only initialized when actually needed
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("encoding movies with BERT (this may take a minute)...")
     embeddings = model.encode(corpus.tolist(), show_progress_bar=True, batch_size=64)
     return embeddings
 

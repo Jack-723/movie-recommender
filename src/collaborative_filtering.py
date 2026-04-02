@@ -163,6 +163,15 @@ def predict_on_test_set(test_df, user_item_matrix, user_similarity, item_similar
     return uu_df, ii_df
 
 
+def evaluate_regression(preds_df, label=''):
+    # drop rows where prediction is NaN (cold-start cases)
+    valid = preds_df.dropna(subset=['predicted_rating'])
+    mae = np.mean(np.abs(valid['true_rating'] - valid['predicted_rating']))
+    rmse = np.sqrt(np.mean((valid['true_rating'] - valid['predicted_rating']) ** 2))
+    print(f"{label} — MAE: {mae:.4f}, RMSE: {rmse:.4f} (on {len(valid)} predictions)")
+    return {'mae': mae, 'rmse': rmse}
+
+
 def save_outputs(user_user_preds, item_item_preds, out_dir='outputs'):
     os.makedirs(out_dir, exist_ok=True)
 
@@ -177,22 +186,26 @@ if __name__ == "__main__":
 
     user_item_matrix = build_user_item_matrix(train)
 
-    print("Computing user-user similarity...")
+    print("computing user-user similarity...")
     user_similarity = compute_user_similarity(user_item_matrix)
 
-    print("Computing item-item similarity...")
+    print("computing item-item similarity...")
     item_similarity = compute_item_similarity(user_item_matrix)
 
-    print("Predicting on test set...")
+    print("predicting on test set...")
     uu_preds, ii_preds = predict_on_test_set(test, user_item_matrix, user_similarity, item_similarity)
 
-    print("Saving outputs...")
+    print("\nevaluating regression metrics...")
+    evaluate_regression(uu_preds, label='user-user CF')
+    evaluate_regression(ii_preds, label='item-item CF')
+
+    print("\nsaving outputs...")
     save_outputs(uu_preds, ii_preds)
 
     sample_user = user_item_matrix.index[0]
 
-    print(f"\nTop recommendations for user {sample_user} using user-user CF:")
+    print(f"\ntop recommendations for user {sample_user} using user-user CF:")
     print(recommend_user_user(sample_user, user_item_matrix, user_similarity, movies, top_n=10))
 
-    print(f"\nTop recommendations for user {sample_user} using item-item CF:")
+    print(f"\ntop recommendations for user {sample_user} using item-item CF:")
     print(recommend_item_item(sample_user, user_item_matrix, item_similarity, movies, top_n=10))
