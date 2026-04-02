@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 # default path to the raw data folder
-DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Datasets')
+DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Datasets'))
 
 
 def load_ratings(path=DATA_PATH):
