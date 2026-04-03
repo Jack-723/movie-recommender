@@ -14,8 +14,8 @@ from nonpersonalized import (
     precision_at_k, recall_at_k, hit_rate
 )
 from collaborative_filtering import (
-    build_user_item_matrix, compute_item_similarity,
-    recommend_item_item
+    build_user_item_matrix, compute_item_similarity, compute_user_similarity,
+    recommend_item_item, recommend_user_user
 )
 from content_based import (
     build_corpus, build_bow_matrix, compute_bow_similarity,
@@ -28,7 +28,7 @@ from hybrid_recommender import (
 
 
 def run_full_evaluation(train, test, movies, users,
-                        user_item_matrix, item_similarity, cb_sim_df,
+                        user_item_matrix, item_similarity, user_similarity, cb_sim_df,
                         n=10, sample_size=200):
     """Evaluate every model on the same test set and return a results dict."""
 
@@ -53,6 +53,12 @@ def run_full_evaluation(train, test, movies, users,
     results['Demographic (age)'] = evaluate_recommender(demo_age, train, test, movies, users, n=n, sample_size=sample_size)
 
     # -- collaborative filtering --
+    print("evaluating user-user CF...")
+    def uu_cf_fn(uid, train, movies, n=10):
+        recs_df = recommend_user_user(uid, user_item_matrix, user_similarity, movies, top_n=n, k=10)
+        return list(recs_df['movie_id'])
+    results['User-User CF'] = evaluate_recommender(uu_cf_fn, train, test, movies, n=n, sample_size=sample_size)
+
     print("evaluating item-item CF...")
     def ii_cf_fn(uid, train, movies, n=10):
         recs_df = recommend_item_item(uid, user_item_matrix, item_similarity, movies, top_n=n, k=10)
@@ -226,6 +232,9 @@ if __name__ == "__main__":
     print("computing item-item similarity...")
     item_similarity = compute_item_similarity(user_item_matrix)
 
+    print("computing user-user similarity...")
+    user_similarity = compute_user_similarity(user_item_matrix)
+
     print("building BoW content similarity...")
     corpus = build_corpus(movies)
     bow_matrix, vectorizer = build_bow_matrix(corpus)
@@ -234,7 +243,7 @@ if __name__ == "__main__":
     # full evaluation
     print("\n--- running full evaluation ---")
     results = run_full_evaluation(train, test, movies, users,
-                                  user_item_matrix, item_similarity, cb_sim_df)
+                                  user_item_matrix, item_similarity, user_similarity, cb_sim_df)
 
     results_df = build_comparison_table(results)
     print("\n" + results_df.to_string())

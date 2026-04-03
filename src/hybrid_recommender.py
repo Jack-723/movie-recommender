@@ -95,6 +95,9 @@ def recommend_weighted_hybrid(user_id, train, movies, user_item_matrix,
 # idea: use CF when we have enough data for the user, fall back to
 # content-based for cold-start users (few ratings in training set)
 
+# Note: MovieLens 1M has no true cold-start users (all have 20+ ratings).
+# The switching hybrid's fallback logic is correct but won't trigger often in evaluation.
+# In production with real new users, the content-based fallback would activate.
 COLD_START_THRESHOLD = 5  # if user has fewer ratings than this, they're "cold"
 
 
@@ -159,7 +162,7 @@ def evaluate_hybrid(recommend_fn, train, test, movies, n=10, sample_size=500):
     Same evaluation logic as nonpersonalized.evaluate_recommender but
     the recommend_fn here already has the models baked in via closure.
     """
-    from nonpersonalized import precision_at_k, recall_at_k, hit_rate
+    from nonpersonalized import precision_at_k, recall_at_k, hit_rate, ndcg_at_k
 
     test_liked = test[test['rating'] >= 4]
     eligible = test_liked['user_id'].unique()
@@ -169,7 +172,7 @@ def evaluate_hybrid(recommend_fn, train, test, movies, n=10, sample_size=500):
     else:
         eval_users = eligible
 
-    precisions, recalls, hits = [], [], []
+    precisions, recalls, hits, ndcgs = [], [], [], []
 
     for uid in eval_users:
         relevant = set(test_liked[test_liked['user_id'] == uid]['movie_id'])
@@ -178,11 +181,13 @@ def evaluate_hybrid(recommend_fn, train, test, movies, n=10, sample_size=500):
         precisions.append(precision_at_k(recs, relevant))
         recalls.append(recall_at_k(recs, relevant))
         hits.append(hit_rate(recs, relevant))
+        ndcgs.append(ndcg_at_k(recs, relevant))
 
     return {
         'precision@10': np.mean(precisions),
         'recall@10': np.mean(recalls),
         'hit_rate': np.mean(hits),
+        'ndcg@10': np.mean(ndcgs),
     }
 
 

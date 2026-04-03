@@ -131,6 +131,18 @@ def recall_at_k(recommended, relevant) :
 def hit_rate(recommended, relevant) :
     return 1.0 if len(set(recommended) & set(relevant)) > 0 else 0.0    # did at least one recommendation land?
 
+def ndcg_at_k(recommended, relevant):
+    # normalized discounted cumulative gain — rewards relevant items appearing earlier
+    if len(recommended) == 0 or len(relevant) == 0:
+        return 0.0
+    dcg = 0.0
+    for i, item in enumerate(recommended):
+        if item in relevant:
+            dcg += 1.0 / np.log2(i + 2)  # i+2 because rank starts at 1, log2(1)=0
+    # ideal DCG: all relevant items at top positions
+    ideal_dcg = sum(1.0 / np.log2(i + 2) for i in range(min(len(relevant), len(recommended))))
+    return dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+
 
 
 def evaluate_recommender(recommend_fn, train, test, movies, users=None, n=10, sample_size=500):
@@ -147,6 +159,7 @@ def evaluate_recommender(recommend_fn, train, test, movies, users=None, n=10, sa
     precisions = []
     recalls = []
     hits = []
+    ndcgs = []
 
     for uid in eval_users:
         # get this user's liked movies in test set (ground truth)
@@ -161,11 +174,13 @@ def evaluate_recommender(recommend_fn, train, test, movies, users=None, n=10, sa
         precisions.append(precision_at_k(recs, relevant))
         recalls.append(recall_at_k(recs, relevant))
         hits.append(hit_rate(recs, relevant))
+        ndcgs.append(ndcg_at_k(recs, relevant))
 
     return {
         'precision@10': np.mean(precisions),
         'recall@10': np.mean(recalls),
-        'hit_rate': np.mean(hits)
+        'hit_rate': np.mean(hits),
+        'ndcg@10': np.mean(ndcgs)
     }
 
 
