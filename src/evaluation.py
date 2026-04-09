@@ -19,7 +19,8 @@ from collaborative_filtering import (
 )
 from content_based import (
     build_corpus, build_bow_matrix, compute_bow_similarity,
-    recommend_bow_for_user
+    recommend_bow_for_user, build_tfidf_matrix, compute_tfidf_similarity,
+    recommend_tfidf_for_user
 )
 from hybrid_recommender import (
     recommend_weighted_hybrid, recommend_switching_hybrid,
@@ -29,7 +30,7 @@ from hybrid_recommender import (
 
 def run_full_evaluation(train, test, movies, users,
                         user_item_matrix, item_similarity, user_similarity, cb_sim_df,
-                        svd_model=None, n=10, sample_size=200):
+                        svd_model=None, corpus=None, n=10, sample_size=200):
     """Evaluate every model on the same test set and return a results dict."""
 
     np.random.seed(42)
@@ -78,6 +79,15 @@ def run_full_evaluation(train, test, movies, users,
         return recommend_bow_for_user(uid, train, movies, cb_sim_df, n=n)
     results['Content-Based (BoW)'] = evaluate_recommender(bow_fn, train, test, movies, n=n, sample_size=sample_size)
 
+    # TF-IDF content-based
+    if corpus is not None:
+        print("evaluating TF-IDF content-based...")
+        tfidf_matrix, _ = build_tfidf_matrix(corpus)
+        tfidf_sim_df = compute_tfidf_similarity(tfidf_matrix, movies)
+        def tfidf_fn(uid, train, movies, n=10):
+            return recommend_tfidf_for_user(uid, train, movies, tfidf_sim_df, n=n)
+        results['Content-Based (TF-IDF)'] = evaluate_recommender(tfidf_fn, train, test, movies, n=n, sample_size=sample_size)
+        
     # -- hybrids --
     print("evaluating weighted hybrid (w=0.7)...")
     def weighted_fn(uid, train, movies, n=10):
@@ -249,8 +259,8 @@ if __name__ == "__main__":
     # full evaluation
     print("\n--- running full evaluation ---")
     results = run_full_evaluation(train, test, movies, users,
-        user_item_matrix, item_similarity, user_similarity, cb_sim_df,
-        svd_model=svd_model)
+    user_item_matrix, item_similarity, user_similarity, cb_sim_df,
+    svd_model=svd_model, corpus=corpus)
 
     results_df = build_comparison_table(results)
     print("\n" + results_df.to_string())

@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import re
 import pandas as pd
 import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import nltk
 from nltk.corpus import stopwords
@@ -50,6 +50,32 @@ def compute_bow_similarity(bow_matrix, movies_df):
     sim_df = pd.DataFrame(sim, index=movies_df['movie_id'], columns=movies_df['movie_id'])
     return sim_df
 
+def build_tfidf_matrix(corpus):
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(corpus)
+    return tfidf_matrix, vectorizer
+
+
+def compute_tfidf_similarity(tfidf_matrix, movies_df):
+    sim = cosine_similarity(tfidf_matrix)
+    sim_df = pd.DataFrame(sim, index=movies_df['movie_id'], columns=movies_df['movie_id'])
+    return sim_df
+
+
+def recommend_tfidf_for_user(user_id, train, movies, sim_df, n=10):
+    # same approach as BoW but using TF-IDF similarity
+    liked = train[(train['user_id'] == user_id) & (train['rating'] >= 4)]['movie_id']
+    liked = [m for m in liked if m in sim_df.index]
+
+    if not liked:
+        return []
+
+    seen = set(train[train['user_id'] == user_id]['movie_id'])
+    scores = sim_df.loc[liked].mean(axis=0)
+    scores = scores.drop(index=[m for m in liked if m in scores.index])
+    scores = scores[~scores.index.isin(seen)]
+
+    return list(scores.sort_values(ascending=False).head(n).index)
 
 def recommend_bow(movie_id, movies_df, sim_df, n=10):
     if movie_id not in sim_df.index:
@@ -128,3 +154,15 @@ if __name__ == "__main__":
     print("\nSaving outputs...")
     save_outputs(recs)
     print("saved bow_recommendations_sample.csv")
+
+    print("building TF-IDF similarity...")
+    tfidf_matrix, tfidf_vectorizer = build_tfidf_matrix(corpus)
+    tfidf_sim_df = compute_tfidf_similarity(tfidf_matrix, movies)
+
+    def tfidf_rec_fn(user_id, train, movies, n=10):
+        return recommend_tfidf_for_user(user_id, train, movies, tfidf_sim_df, n=n)
+
+    print("evaluating TF-IDF content-based recommender...")
+    np.random.seed(42)
+    results_tfidf = evaluate_recommender(tfidf_rec_fn, train, test, movies, n=10, sample_size=500)
+    print(f"TF-IDF content-based: {results_tfidf}")
