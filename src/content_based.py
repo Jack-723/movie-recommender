@@ -64,7 +64,6 @@ def recommend_bow(movie_id, movies_df, sim_df, n=10):
 
 
 
-#part 2 phase 4 eval 
 def recommend_bow_for_user(user_id, train, movies, sim_df, n=10):
     # get movies this user liked in training data
     liked = train[(train['user_id'] == user_id) & (train['rating'] >= 4)]['movie_id']

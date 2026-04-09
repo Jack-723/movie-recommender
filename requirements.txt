@@ -3,7 +3,6 @@ numpy
 matplotlib
 seaborn
 scikit-learn
-scikit-surprise
 scipy
 nltk
 sentence-transformers

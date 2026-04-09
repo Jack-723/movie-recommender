@@ -15,7 +15,7 @@ from nonpersonalized import (
 )
 from collaborative_filtering import (
     build_user_item_matrix, compute_item_similarity, compute_user_similarity,
-    recommend_item_item, recommend_user_user
+    recommend_item_item, recommend_user_user, train_svd, recommend_svd_list
 )
 from content_based import (
     build_corpus, build_bow_matrix, compute_bow_similarity,
@@ -29,7 +29,7 @@ from hybrid_recommender import (
 
 def run_full_evaluation(train, test, movies, users,
                         user_item_matrix, item_similarity, user_similarity, cb_sim_df,
-                        n=10, sample_size=200):
+                        svd_model=None, n=10, sample_size=200):
     """Evaluate every model on the same test set and return a results dict."""
 
     np.random.seed(42)
@@ -64,6 +64,13 @@ def run_full_evaluation(train, test, movies, users,
         recs_df = recommend_item_item(uid, user_item_matrix, item_similarity, movies, top_n=n, k=10)
         return list(recs_df['movie_id'])
     results['Item-Item CF'] = evaluate_recommender(ii_cf_fn, train, test, movies, n=n, sample_size=sample_size)
+
+    # SVD
+    if svd_model is not None:
+        print("evaluating SVD...")
+        def svd_fn(uid, train, movies, n=10):
+            return recommend_svd_list(uid, svd_model, train, movies, n=n)
+        results['SVD'] = evaluate_recommender(svd_fn, train, test, movies, n=n, sample_size=sample_size)
 
     # -- content-based --
     print("evaluating BoW content-based...")
@@ -107,7 +114,6 @@ def compute_lift(results_df):
 
 
 def print_business_summary(results_df):
-    """CEO-friendly summary of the business value."""
     best_model = results_df['hit_rate'].idxmax()
     best_hit = results_df.loc[best_model, 'hit_rate']
     random_hit = results_df.loc['Random', 'hit_rate']
@@ -117,22 +123,18 @@ def print_business_summary(results_df):
     random_prec = results_df.loc['Random', 'precision@10']
     prec_lift = best_prec / random_prec if random_prec > 0 else float('inf')
 
-    print("=" * 60)
-    print("EXECUTIVE SUMMARY — Recommender System Business Value")
-    print("=" * 60)
-    print(f"\nBest model: {best_model}")
-    print(f"\nHit Rate (chance user gets at least 1 good rec):")
-    print(f"  Random:       {random_hit:.1%}")
-    print(f"  {best_model}: {best_hit:.1%}")
-    print(f"  → {hit_lift:.1f}x improvement")
-    print(f"\nPrecision@10 (fraction of recs that are relevant):")
-    print(f"  Random:       {random_prec:.2%}")
-    print(f"  {best_model}: {best_prec:.2%}")
-    print(f"  → {prec_lift:.1f}x improvement")
-    print(f"\nBottom line:")
-    print(f"  Our system is ~{hit_lift:.0f}x more likely to show products")
-    print(f"  users actually want vs the current random approach.")
-    print("=" * 60)
+    print("\nbusiness summary:")
+    print(f"  best model: {best_model}")
+    print(f"\n  hit rate (chance user gets at least 1 good rec):")
+    print(f"    random:       {random_hit:.1%}")
+    print(f"    {best_model}: {best_hit:.1%}")
+    print(f"    {hit_lift:.1f}x improvement")
+    print(f"\n  precision@10 (fraction of recs that are relevant):")
+    print(f"    random:       {random_prec:.2%}")
+    print(f"    {best_model}: {best_prec:.2%}")
+    print(f"    {prec_lift:.1f}x improvement")
+    print(f"\n  our system is ~{hit_lift:.0f}x more likely to show something")
+    print(f"  the user actually wants vs random recommendations.")
 
 
 def plot_model_comparison(results_df, out_dir='outputs/figures'):
@@ -240,10 +242,15 @@ if __name__ == "__main__":
     bow_matrix, vectorizer = build_bow_matrix(corpus)
     cb_sim_df = compute_bow_similarity(bow_matrix, movies)
 
+    print("training SVD model...")
+    svd_model = train_svd(train)
+
+
     # full evaluation
     print("\n--- running full evaluation ---")
     results = run_full_evaluation(train, test, movies, users,
-                                  user_item_matrix, item_similarity, user_similarity, cb_sim_df)
+        user_item_matrix, item_similarity, user_similarity, cb_sim_df,
+        svd_model=svd_model)
 
     results_df = build_comparison_table(results)
     print("\n" + results_df.to_string())

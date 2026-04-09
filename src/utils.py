@@ -2,8 +2,7 @@ import pandas as pd
 import os
 
 # default path to the raw data folder
-DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Datasets'))
-
+DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'raw'))
 
 def load_ratings(path=DATA_PATH):
     # ratings.dat format: UserID::MovieID::Rating::Timestamp
